@@ -22,6 +22,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
 	"io/ioutil"
 	"log"
 	"os"
@@ -32,32 +33,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func getWebAppsClient(subscriptionID string) (client web.AppsClient, err error) {
-	client = web.NewAppsClient(subscriptionID)
-	//client.Authorizer, err = iam.GetResourceManagementAuthorizer()
-	//if err != nil {
-	//	return
-	//}
-	//err = client.AddToUserAgent(config.UserAgent())
-	//if err != nil {
-	//	return
-	//}
-	return
-}
-
-// List masterkey for accessing the functionapp
-func ListAppHostKeys(ctx context.Context, subscriptionID string, resourceGroupName string, name string) {
-	client, err := getWebAppsClient(subscriptionID)
-	if err != nil {
-		return
-	}
-	keys, err := client.ListHostKeys(ctx, resourceGroupName, name)
-	if err != nil {
-		return
-	}
-	fmt.Println(*keys.MasterKey)
-
-}
 
 func listSecrets(basicClient keyvault.BaseClient, vaultName string) {
 	secretList, err := basicClient.GetSecrets(context.Background(), "https://"+vaultName+".vault.azure.net", nil)
@@ -124,6 +99,35 @@ func createUpdateFunctionsSecret(basicClient keyvault.BaseClient, webClient web.
 	defer wg.Done()
 }
 
+
+
+func createUpdateCosmosSecret(basicClient keyvault.BaseClient, cosmosClient documentdb.DatabaseAccountsClient,
+	resourceGroup,cosmosAccountName,vaultName string,keysNames map[string]string, wg *sync.WaitGroup) {
+	var wf sync.WaitGroup
+	f, err := cosmosClient.ListKeys(context.Background(), resourceGroup, cosmosAccountName)
+	if err != nil {
+		panic(err)
+	}
+	cosmoskeys := map[string]string{}
+	for k,v := range keysNames {
+		if k == "primaryMasterKey" {
+			cosmoskeys[v] = *f.PrimaryMasterKey
+		} else if k == "primaryReadonlyKey"{
+			cosmoskeys[v] = *f.PrimaryReadonlyMasterKey
+		} else if k == "secondaryMasterKey" {
+			cosmoskeys[v] = *f.SecondaryReadonlyMasterKey
+		}else if k == "secondaryReadonlyKey" {
+			cosmoskeys[v] = *f.PrimaryMasterKey
+		}
+	}
+	wf.Add(len(cosmoskeys))
+	for k, v := range cosmoskeys {
+		go createUpdateSecret(basicClient, k, v, vaultName, &wf)
+	}
+	wf.Wait()
+	defer wg.Done()
+}
+
 func deleteSecret(basicClient keyvault.BaseClient, secname string, vaultName string) {
 	_, err := basicClient.DeleteSecret(context.Background(), "https://"+vaultName+".vault.azure.net", secname)
 	if err != nil {
@@ -148,4 +152,18 @@ func (f *Functions) getConf(FunctionsFile *string) *Functions {
 	}
 
 	return f
+}
+
+func (c *CosmosAccounts) getConf(FunctionsFile *string) *CosmosAccounts {
+
+	yamlFile, err := ioutil.ReadFile(*FunctionsFile)
+	if err != nil {
+		log.Fatalf("yamlFile.Get err   #%v ", err)
+	}
+	err = yaml.Unmarshal(yamlFile, c)
+	if err != nil {
+		log.Fatalf("Unmarshal: %v", err)
+	}
+
+	return c
 }

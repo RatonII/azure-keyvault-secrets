@@ -5,6 +5,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web"
+	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
 	aauth "github.com/Azure/go-autorest/autorest/azure/auth"
 	"log"
 	"runtime"
@@ -18,6 +19,7 @@ func main() {
 	var resourceGr string
 	var vault string
 	var c Functions
+	var cosmos CosmosAccounts
 
 	authorizer, err := kvauth.NewAuthorizerFromCLI()
 	if err != nil {
@@ -32,6 +34,7 @@ func main() {
 	subscription := flag.String("subscription", "", "Add a config file yaml with all the pipelines contains")
 	resourceGroup := flag.String("resource-group", "", "Add a config file yaml with all the pipelines contains")
 	storefunckeys := flag.Bool("storefunckeys", false,"This is going to be used only if you want to store the functions key in keyvault")
+	storecosmoskeys := flag.Bool("storecosmoskeys", false,"This is going to be used only if you want to store the cosmosdb keys in keyvault")
 	flag.Parse()
 
 	if *vaultName != "" {
@@ -41,12 +44,6 @@ func main() {
 	}
 
 	if *secrets != "" {
-		if *vaultName != "" {
-			vault = *vaultName
-		} else {
-			log.Fatalln("Please provide a keyvault name with argument: --vault")
-		}
-
 		entries := strings.Split(*secrets, ",")
 		newsecrets := map[string]string{}
 		for _, e := range entries {
@@ -59,7 +56,9 @@ func main() {
 		}
 		wg.Wait()
 	}
-	if *storefunckeys == true {
+
+
+	if *storefunckeys == true || *storecosmoskeys == true {
 		if *subscription != "" {
 			sub = *subscription
 		} else {
@@ -70,8 +69,10 @@ func main() {
 		} else {
 			log.Fatalln("Please provide a  resource group for your azure account: --resource-group")
 		}
-		webclient := web.NewAppsClient(sub)
 		authorizer, err = aauth.NewAuthorizerFromCLI()
+	}
+	if *storefunckeys == true {
+		webclient := web.NewAppsClient(sub)
 		if err != nil {
 			log.Fatalf("unable to create function authorizer: %v\n", err)
 		}
@@ -82,6 +83,18 @@ func main() {
 		wg.Add(len(*funcsecrets) * 2)
 		for _, function := range *funcsecrets {
 			go createUpdateFunctionsSecret(basicClient, webclient, resourceGr, function.Name, function.SecretKeyName, vault, &wg)
+		}
+		wg.Wait()
+	}
+	if *storecosmoskeys == true {
+
+		cosmosclient := documentdb.NewDatabaseAccountsClient(sub)
+		cosmosclient.Authorizer = authorizer
+		cosmosfile := "cosmos-secrets.yaml"
+		cosmossecrets := cosmos.getConf(&cosmosfile)
+		wg.Add(len(*cosmossecrets))
+		for _, cosmos := range  *cosmossecrets {
+			go createUpdateCosmosSecret(basicClient,cosmosclient,resourceGr,cosmos.AccountName,vault,cosmos.CosmosdbKeys,&wg)
 		}
 		wg.Wait()
 	}
