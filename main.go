@@ -30,9 +30,9 @@ func main() {
 
 	vaultName := flag.String("vault", "", "Then name of the keyvault where to store secrets")
 	runtime.GOMAXPROCS(4)
-	secrets := flag.String("secrets", "", "Add a config file yaml with all the pipelines contains")
-	subscription := flag.String("subscription", "", "Add a config file yaml with all the pipelines contains")
-	resourceGroup := flag.String("resource-group", "", "Add a config file yaml with all the pipelines contains")
+	secrets := flag.String("secrets", "", "Add the secrets to store in the keyvaut: --secrets ex: secretname=secretvalue,othersecretname=othersecretvalue")
+	subscription := flag.String("subscription", "", "The name of the subscription for cosmosdb or function to get the secrets from")
+	resourceGroup := flag.String("resource-group", "", "The name of the resource group for cosmosdb or function to get the secrets from")
 	storefunckeys := flag.Bool("storefunckeys", false,"This is going to be used only if you want to store the functions key in keyvault")
 	storecosmoskeys := flag.Bool("storecosmoskeys", false,"This is going to be used only if you want to store the cosmosdb keys in keyvault")
 	flag.Parse()
