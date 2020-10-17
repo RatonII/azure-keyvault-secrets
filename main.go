@@ -64,7 +64,7 @@ func main() {
 	}
 
 
-	if *storefunckeys == true || *storecosmoskeys == true {
+	if *storefunckeys == true || *storecosmoskeys == true || *storeeventgridkeys == true {
 		if *subscription != "" {
 			sub = *subscription
 		} else {
