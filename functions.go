@@ -22,6 +22,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/services/eventgrid/mgmt/2020-06-01/eventgrid"
 	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	"github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web"
@@ -128,6 +129,29 @@ func createUpdateCosmosSecret(basicClient keyvault.BaseClient, cosmosClient docu
 	defer wg.Done()
 }
 
+func createUpdateEventGridSecret(basicClient keyvault.BaseClient, eventGridClient eventgrid.DomainsClient,
+	resourceGroup,domainName,vaultName string,keysNames map[string]string, wg *sync.WaitGroup) {
+	var wf sync.WaitGroup
+	e, err := eventGridClient.ListSharedAccessKeys(context.Background(), resourceGroup, domainName)
+	if err != nil {
+		panic(err)
+	}
+	eventgridkeys := map[string]string{}
+	for k,v := range keysNames {
+		if k == "Key1" {
+			eventgridkeys[v] = *e.Key1
+		} else if k == "Key2" {
+			eventgridkeys[v] = *e.Key2
+		}
+	}
+	wf.Add(len(eventgridkeys))
+	for k, v := range eventgridkeys {
+		go createUpdateSecret(basicClient, k, v, vaultName, &wf)
+	}
+	wf.Wait()
+	defer wg.Done()
+}
+
 func deleteSecret(basicClient keyvault.BaseClient, secname string, vaultName string) {
 	_, err := basicClient.DeleteSecret(context.Background(), "https://"+vaultName+".vault.azure.net", secname)
 	if err != nil {
@@ -166,6 +190,20 @@ func (c *CosmosAccounts) getConf(FunctionsFile *string) *CosmosAccounts {
 	}
 
 	return c
+}
+
+func (e *EventGrids) getConf(EventGridFile *string) *EventGrids {
+
+	yamlFile, err := ioutil.ReadFile(*EventGridFile)
+	if err != nil {
+		log.Fatalf("yamlFile.Get err   #%v ", err)
+	}
+	err = yaml.Unmarshal(yamlFile, e)
+	if err != nil {
+		log.Fatalf("Unmarshal: %v", err)
+	}
+
+	return e
 }
 
 func (i *arrayFlags) String() string {

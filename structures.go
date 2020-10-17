@@ -14,5 +14,12 @@ type CosmosAccount struct {
 	CosmosdbKeys				map[string]string `yaml:"cosmosdbKeys"`
 }
 
+type EventGrids []EventGrid
+
+type EventGrid struct {
+	DomainName 	string 			 `yaml:"domainName"`
+	AccessKeys map[string]string `yaml:"eventgridKeys"`
+}
+
 type arrayFlags []string
 
