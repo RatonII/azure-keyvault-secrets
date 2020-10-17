@@ -23,14 +23,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
+	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
+	"github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"sync"
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
-	"github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web"
-	"gopkg.in/yaml.v3"
 )
 
 
@@ -166,4 +166,13 @@ func (c *CosmosAccounts) getConf(FunctionsFile *string) *CosmosAccounts {
 	}
 
 	return c
+}
+
+func (i *arrayFlags) String() string {
+	return fmt.Sprint(*i)
+}
+
+func (i *arrayFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
 }

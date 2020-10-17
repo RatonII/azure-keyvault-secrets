@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
 	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
@@ -20,6 +21,7 @@ func main() {
 	var vault string
 	var c Functions
 	var cosmos CosmosAccounts
+	var secretFlag arrayFlags
 
 	authorizer, err := kvauth.NewAuthorizerFromCLI()
 	if err != nil {
@@ -30,11 +32,13 @@ func main() {
 
 	vaultName := flag.String("vault", "", "Then name of the keyvault where to store secrets")
 	runtime.GOMAXPROCS(4)
-	secrets := flag.String("secrets", "", "Add the secrets to store in the keyvaut: --secrets ex: secretname=secretvalue,othersecretname=othersecretvalue")
+	//secrets := flag.String("secrets", "", "Add the secrets to store in the keyvaut: --secrets ex: secretname=secretvalue,othersecretname=othersecretvalue")
+	flag.Var(&secretFlag, "secret", "Add the secrets to store in the keyvaut: --secrets ex: secretname=secretvalue")
 	subscription := flag.String("subscription", "", "The name of the subscription for cosmosdb or function to get the secrets from")
 	resourceGroup := flag.String("resource-group", "", "The name of the resource group for cosmosdb or function to get the secrets from")
 	storefunckeys := flag.Bool("storefunckeys", false,"This is going to be used only if you want to store the functions key in keyvault")
 	storecosmoskeys := flag.Bool("storecosmoskeys", false,"This is going to be used only if you want to store the cosmosdb keys in keyvault")
+	secrets := &secretFlag
 	flag.Parse()
 
 	if *vaultName != "" {
@@ -42,14 +46,13 @@ func main() {
 	} else {
 		log.Fatalln("Please provide a keyvault name with argument: --vault")
 	}
-
-	if *secrets != "" {
-		entries := strings.Split(*secrets, ",")
+	if *secrets != nil {
 		newsecrets := map[string]string{}
-		for _, e := range entries {
+		for _, e := range *secrets {
 			parts := strings.Split(e, "=")
 			newsecrets[parts[0]] = parts[1]
 		}
+		fmt.Println(newsecrets);
 		wg.Add(len(newsecrets))
 		for k, v := range newsecrets {
 			go createUpdateSecret(basicClient, k, v, vault, &wg)

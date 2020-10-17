@@ -14,4 +14,5 @@ type CosmosAccount struct {
 	CosmosdbKeys				map[string]string `yaml:"cosmosdbKeys"`
 }
 
+type arrayFlags []string
 
