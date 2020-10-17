@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
-	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
-	"github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web"
 	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
+	kvauth "github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
+	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
+	"github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web"
 	aauth "github.com/Azure/go-autorest/autorest/azure/auth"
 	"log"
 	"runtime"
