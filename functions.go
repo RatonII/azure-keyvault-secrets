@@ -113,6 +113,7 @@ func createUpdateCosmosSecret(basicClient keyvault.BaseClient, cosmosClient docu
 	for k,v := range keysNames {
 		if k == "primaryMasterKey" {
 			cosmoskeys[v] = *f.PrimaryMasterKey
+			cosmoskeys[fmt.Sprintf("%s-conn-string",v)] = fmt.Sprintf("AccountEndpoint=https://%s.documents.azure.com:443/;AccountKey=%s;",cosmosAccountName,*f.PrimaryMasterKey)
 		} else if k == "primaryReadonlyKey"{
 			cosmoskeys[v] = *f.PrimaryReadonlyMasterKey
 		} else if k == "secondaryMasterKey" {
