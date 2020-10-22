@@ -34,8 +34,8 @@ func main() {
 
 	vaultName := flag.String("vault", "", "Then name of the keyvault where to store secrets")
 	runtime.GOMAXPROCS(4)
-	//secrets := flag.String("secrets", "", "Add the secrets to store in the keyvaut: --secrets ex: secretname=secretvalue,othersecretname=othersecretvalue")
-	flag.Var(&secretFlag, "secret", "Add the secrets to store in the keyvaut: --secrets ex: secretname=secretvalue")
+	flag.Var(&secretFlag, "secret", "Add the secrets to store in the keyvaut: --secret ex: secretname=secretvalue")
+	funcsecfile := flag.String("funcsecfile", "", "The name of the subscription for cosmosdb or function to get the secrets from")
 	subscription := flag.String("subscription", "", "The name of the subscription for cosmosdb or function to get the secrets from")
 	resourceGroup := flag.String("resource-group", "", "The name of the resource group for cosmosdb or function to get the secrets from")
 	storefunckeys := flag.Bool("storefunckeys", false,"This is going to be used only if you want to store the functions key in keyvault")
@@ -77,14 +77,14 @@ func main() {
 		}
 		authorizer, err = aauth.NewAuthorizerFromCLI()
 	}
-	if *storefunckeys == true {
+	if *storefunckeys == true && *funcsecfile != "" {
 		webclient := web.NewAppsClient(sub)
 		if err != nil {
 			log.Fatalf("unable to create function authorizer: %v\n", err)
 		}
 		webclient.Authorizer = authorizer
 
-		funcfile := "functions-secrets.yaml"
+		funcfile := *funcsecfile
 		funcsecrets := c.getConf(&funcfile)
 		wg.Add(len(*funcsecrets) * 2)
 		for _, function := range *funcsecrets {
@@ -117,5 +117,4 @@ func main() {
 		}
 		wg.Wait()
 	}
-
 }
