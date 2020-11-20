@@ -22,8 +22,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/services/eventgrid/mgmt/2020-06-01/eventgrid"
 	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
+	"github.com/Azure/azure-sdk-for-go/services/datafactory/mgmt/2018-06-01/datafactory"
+	"github.com/Azure/azure-sdk-for-go/services/eventgrid/mgmt/2020-06-01/eventgrid"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	"github.com/Azure/azure-sdk-for-go/services/web/mgmt/2020-06-01/web"
 	"gopkg.in/yaml.v3"
@@ -33,7 +34,6 @@ import (
 	"path"
 	"sync"
 )
-
 
 func listSecrets(basicClient keyvault.BaseClient, vaultName string) {
 	secretList, err := basicClient.GetSecrets(context.Background(), "https://"+vaultName+".vault.azure.net", nil)
@@ -91,7 +91,7 @@ func createUpdateSecret(basicClient keyvault.BaseClient, secname, secvalue strin
 }
 
 func createUpdateFunctionsSecret(basicClient keyvault.BaseClient, webClient web.AppsClient,
-								resourceGroup,funcname,secname,vaultName string, wg *sync.WaitGroup) {
+	resourceGroup, funcname, secname, vaultName string, wg *sync.WaitGroup) {
 	f, err := webClient.ListHostKeys(context.Background(), resourceGroup, funcname)
 	if err != nil {
 		panic(err)
@@ -100,25 +100,23 @@ func createUpdateFunctionsSecret(basicClient keyvault.BaseClient, webClient web.
 	defer wg.Done()
 }
 
-
-
 func createUpdateCosmosSecret(basicClient keyvault.BaseClient, cosmosClient documentdb.DatabaseAccountsClient,
-	resourceGroup,cosmosAccountName,vaultName string,keysNames map[string]string, wg *sync.WaitGroup) {
+	resourceGroup, cosmosAccountName, vaultName string, keysNames map[string]string, wg *sync.WaitGroup) {
 	var wf sync.WaitGroup
 	f, err := cosmosClient.ListKeys(context.Background(), resourceGroup, cosmosAccountName)
 	if err != nil {
 		panic(err)
 	}
 	cosmoskeys := map[string]string{}
-	for k,v := range keysNames {
+	for k, v := range keysNames {
 		if k == "primaryMasterKey" {
 			cosmoskeys[v] = *f.PrimaryMasterKey
-			cosmoskeys[fmt.Sprintf("%s-conn-string",v)] = fmt.Sprintf("AccountEndpoint=https://%s.documents.azure.com:443/;AccountKey=%s;",cosmosAccountName,*f.PrimaryMasterKey)
-		} else if k == "primaryReadonlyKey"{
+			cosmoskeys[fmt.Sprintf("%s-conn-string", v)] = fmt.Sprintf("AccountEndpoint=https://%s.documents.azure.com:443/;AccountKey=%s;", cosmosAccountName, *f.PrimaryMasterKey)
+		} else if k == "primaryReadonlyKey" {
 			cosmoskeys[v] = *f.PrimaryReadonlyMasterKey
 		} else if k == "secondaryMasterKey" {
 			cosmoskeys[v] = *f.SecondaryReadonlyMasterKey
-		}else if k == "secondaryReadonlyKey" {
+		} else if k == "secondaryReadonlyKey" {
 			cosmoskeys[v] = *f.PrimaryMasterKey
 		}
 	}
@@ -131,14 +129,14 @@ func createUpdateCosmosSecret(basicClient keyvault.BaseClient, cosmosClient docu
 }
 
 func createUpdateEventGridSecret(basicClient keyvault.BaseClient, eventGridClient eventgrid.DomainsClient,
-	resourceGroup,domainName,vaultName string,keysNames map[string]string, wg *sync.WaitGroup) {
+	resourceGroup, domainName, vaultName string, keysNames map[string]string, wg *sync.WaitGroup) {
 	var wf sync.WaitGroup
 	e, err := eventGridClient.ListSharedAccessKeys(context.Background(), resourceGroup, domainName)
 	if err != nil {
 		panic(err)
 	}
 	eventgridkeys := map[string]string{}
-	for k,v := range keysNames {
+	for k, v := range keysNames {
 		if k == "Key1" {
 			eventgridkeys[v] = *e.Key1
 		} else if k == "Key2" {
@@ -147,6 +145,26 @@ func createUpdateEventGridSecret(basicClient keyvault.BaseClient, eventGridClien
 	}
 	wf.Add(len(eventgridkeys))
 	for k, v := range eventgridkeys {
+		go createUpdateSecret(basicClient, k, v, vaultName, &wf)
+	}
+	wf.Wait()
+	defer wg.Done()
+}
+
+func createUpdateAdfIntegratedRuntimeSecret(basicClient keyvault.BaseClient,
+	integratedRuntimeClient datafactory.IntegrationRuntimesClient,
+	resourceGroup, factoryName, integrationRuntimeName,key1,key2, vaultName string, wg *sync.WaitGroup) {
+	var wf sync.WaitGroup
+	d, err := integratedRuntimeClient.ListAuthKeys(context.Background(), resourceGroup, factoryName, integrationRuntimeName)
+	if err != nil {
+		panic(err)
+	}
+	integratedRuntimekeys := map[string]string{}
+	integratedRuntimekeys[key1] = *d.AuthKey1
+	integratedRuntimekeys[key2] = *d.AuthKey2
+
+	wf.Add(len(integratedRuntimekeys))
+	for k, v := range integratedRuntimekeys {
 		go createUpdateSecret(basicClient, k, v, vaultName, &wf)
 	}
 	wf.Wait()
@@ -205,6 +223,20 @@ func (e *EventGrids) getConf(EventGridFile *string) *EventGrids {
 	}
 
 	return e
+}
+
+func (d *DataFactories) getConf(DataFactoryFile *string) *DataFactories {
+
+	yamlFile, err := ioutil.ReadFile(*DataFactoryFile)
+	if err != nil {
+		log.Fatalf("yamlFile.Get err   #%v ", err)
+	}
+	err = yaml.Unmarshal(yamlFile, d)
+	if err != nil {
+		log.Fatalf("Unmarshal: %v", err)
+	}
+
+	return d
 }
 
 func (i *arrayFlags) String() string {
