@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
 	"github.com/Azure/azure-sdk-for-go/services/datafactory/mgmt/2018-06-01/datafactory"
 	"github.com/Azure/azure-sdk-for-go/services/eventgrid/mgmt/2020-06-01/eventgrid"
@@ -25,6 +26,7 @@ func main() {
 	var cosmos CosmosAccounts
 	var event EventGrids
 	var datafactories DataFactories
+	var storageaccounts StorageAccounts
 	var secretFlag arrayFlags
 
 	authorizer, err := kvauth.NewAuthorizerFromCLI()
@@ -44,6 +46,7 @@ func main() {
 	storecosmoskeys := flag.Bool("storecosmoskeys", false, "This is going to be used only if you want to store the cosmosdb keys in keyvault")
 	storeeventgridkeys := flag.Bool("storeeventskeys", false, "This is going to be used only if you want to store the event grid keys in keyvault")
 	storeadfirkeys := flag.Bool("storeadfirkeys", false, "This is going to be used only if you want to store the azure data factory integrated runtime keys in keyvault")
+	storestoragekeys := flag.Bool("storestoragekeys", false, "This is going to be used only if you want to store the storage account keys in keyvault")
 	secrets := &secretFlag
 	flag.Parse()
 
@@ -66,7 +69,7 @@ func main() {
 		wg.Wait()
 	}
 
-	if *storefunckeys == true || *storecosmoskeys == true || *storeeventgridkeys == true || *storeadfirkeys {
+	if *storefunckeys == true || *storecosmoskeys == true || *storeeventgridkeys == true || *storeadfirkeys || *storestoragekeys == true {
 		if *subscription != "" {
 			sub = *subscription
 		} else {
@@ -132,4 +135,17 @@ func main() {
 		}
 		wg.Wait()
 	}
+	if *storestoragekeys == true {
+
+		storageclient := storage.NewAccountsClient(sub)
+		storageclient.Authorizer = authorizer
+		storagefile := "storage-secrets.yaml"
+		storagesecrets := storageaccounts.getConf(&storagefile)
+		wg.Add(len(*storagesecrets))
+		for _, sa := range *storagesecrets {
+			go createUpdateStorageAccountSecret(basicClient, storageclient, resourceGr, sa.StorageName ,sa.AccessKey1, vault, &wg)
+		}
+		wg.Wait()
+	}
+
 }

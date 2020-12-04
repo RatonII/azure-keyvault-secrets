@@ -30,4 +30,11 @@ type DataFactory struct {
 	IntegrationRuntimeKey2 string `yaml:"integrationRuntimeKey2"`
 }
 
+type StorageAccounts []StorageAccount
+
+type StorageAccount struct {
+	StorageName string `yaml:"storageName"`
+	AccessKey1  string `yaml:"accessKey1"`
+}
+
 type arrayFlags []string

@@ -22,6 +22,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/Azure/azure-sdk-for-go/services/cosmos-db/mgmt/2020-04-01/documentdb"
 	"github.com/Azure/azure-sdk-for-go/services/datafactory/mgmt/2018-06-01/datafactory"
 	"github.com/Azure/azure-sdk-for-go/services/eventgrid/mgmt/2020-06-01/eventgrid"
@@ -171,6 +172,30 @@ func createUpdateAdfIntegratedRuntimeSecret(basicClient keyvault.BaseClient,
 	defer wg.Done()
 }
 
+func createUpdateStorageAccountSecret(basicClient keyvault.BaseClient,
+	storageAccountClient storage.AccountsClient,
+	resourceGroup, accountName, key1,vaultName string, wg *sync.WaitGroup) {
+	var wf sync.WaitGroup
+	s, err := storageAccountClient.ListKeys(context.Background(), resourceGroup, accountName, storage.Kerb)
+	if err != nil {
+		panic(err)
+	}
+	//storagekeys := map[string]string{}
+	storagekey1 := (*s.Keys)[0].Value
+	//for _, j := range *s.Keys {
+	//
+	//		storagekeys[v] = *j.Value
+	//}
+	wf.Add(1)
+	go createUpdateSecret(basicClient, key1, *storagekey1, vaultName, &wf)
+	//wf.Add(len(integratedRuntimekeys))
+	//for k, v := range integratedRuntimekeys {
+	//	go createUpdateSecret(basicClient, k, v, vaultName, &wf)
+	//}
+	wf.Wait()
+	defer wg.Done()
+}
+
 func deleteSecret(basicClient keyvault.BaseClient, secname string, vaultName string) {
 	_, err := basicClient.DeleteSecret(context.Background(), "https://"+vaultName+".vault.azure.net", secname)
 	if err != nil {
@@ -238,6 +263,21 @@ func (d *DataFactories) getConf(DataFactoryFile *string) *DataFactories {
 
 	return d
 }
+
+func (s *StorageAccounts) getConf(StorageFile *string) *StorageAccounts {
+
+	yamlFile, err := ioutil.ReadFile(*StorageFile)
+	if err != nil {
+		log.Fatalf("yamlFile.Get err   #%v ", err)
+	}
+	err = yaml.Unmarshal(yamlFile, s)
+	if err != nil {
+		log.Fatalf("Unmarshal: %v", err)
+	}
+
+	return s
+}
+
 
 func (i *arrayFlags) String() string {
 	return fmt.Sprint(*i)
