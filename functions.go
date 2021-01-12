@@ -174,24 +174,20 @@ func createUpdateAdfIntegratedRuntimeSecret(basicClient keyvault.BaseClient,
 
 func createUpdateStorageAccountSecret(basicClient keyvault.BaseClient,
 	storageAccountClient storage.AccountsClient,
-	resourceGroup, accountName, key1,vaultName string, wg *sync.WaitGroup) {
+	resourceGroup, accountName, key1,connstring1,vaultName string, wg *sync.WaitGroup) {
 	var wf sync.WaitGroup
 	s, err := storageAccountClient.ListKeys(context.Background(), resourceGroup, accountName, storage.Kerb)
 	if err != nil {
 		panic(err)
 	}
-	//storagekeys := map[string]string{}
-	storagekey1 := (*s.Keys)[0].Value
-	//for _, j := range *s.Keys {
-	//
-	//		storagekeys[v] = *j.Value
-	//}
-	wf.Add(1)
-	go createUpdateSecret(basicClient, key1, *storagekey1, vaultName, &wf)
-	//wf.Add(len(integratedRuntimekeys))
-	//for k, v := range integratedRuntimekeys {
-	//	go createUpdateSecret(basicClient, k, v, vaultName, &wf)
-	//}
+	storagesecrets := map[string]string{}
+	storagesecrets[key1] = *(*s.Keys)[0].Value
+
+	storagesecrets[connstring1] = fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",accountName,storagesecrets["storagekey1"])
+	wf.Add(len(storagesecrets))
+	for k,v := range storagesecrets {
+		go createUpdateSecret(basicClient, k, v, vaultName, &wf)
+	}
 	wf.Wait()
 	defer wg.Done()
 }

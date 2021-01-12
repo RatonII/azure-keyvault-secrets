@@ -35,6 +35,7 @@ type StorageAccounts []StorageAccount
 type StorageAccount struct {
 	StorageName string `yaml:"storageName"`
 	AccessKey1  string `yaml:"accessKey1"`
+	ConnString1	string `yaml:"connstring1"`
 }
 
 type arrayFlags []string

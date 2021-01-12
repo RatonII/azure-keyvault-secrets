@@ -58,7 +58,7 @@ func main() {
 	if *secrets != nil {
 		newsecrets := map[string]string{}
 		for _, e := range *secrets {
-			parts := strings.Split(e, "=")
+			parts := strings.Split(e, ":=")
 			newsecrets[parts[0]] = parts[1]
 		}
 		fmt.Println(newsecrets)
@@ -143,7 +143,7 @@ func main() {
 		storagesecrets := storageaccounts.getConf(&storagefile)
 		wg.Add(len(*storagesecrets))
 		for _, sa := range *storagesecrets {
-			go createUpdateStorageAccountSecret(basicClient, storageclient, resourceGr, sa.StorageName ,sa.AccessKey1, vault, &wg)
+			go createUpdateStorageAccountSecret(basicClient, storageclient, resourceGr, sa.StorageName ,sa.AccessKey1,sa.ConnString1, vault, &wg)
 		}
 		wg.Wait()
 	}
