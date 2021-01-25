@@ -183,7 +183,7 @@ func createUpdateStorageAccountSecret(basicClient keyvault.BaseClient,
 	storagesecrets := map[string]string{}
 	storagesecrets[key1] = *(*s.Keys)[0].Value
 
-	storagesecrets[connstring1] = fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",accountName,storagesecrets["storagekey1"])
+	storagesecrets[connstring1] = fmt.Sprintf("DefaultEndpointsProtocol=https;AccountName=%s;AccountKey=%s;EndpointSuffix=core.windows.net",accountName,storagesecrets[key1])
 	wf.Add(len(storagesecrets))
 	for k,v := range storagesecrets {
 		go createUpdateSecret(basicClient, k, v, vaultName, &wf)
